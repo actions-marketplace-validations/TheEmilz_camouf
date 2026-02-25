@@ -134,20 +134,63 @@ export class PerformanceAntipatternsRule implements IRule {
   private checkMemoryLeakPatterns(filePath: string, content: string, violations: Violation[]): void {
     const lines = content.split('\n');
 
+    // Pre-compute file-level cleanup indicators
+    const hasRemoveEventListener = content.includes('removeEventListener') || content.includes('.off(');
+    const hasAbortController = content.includes('AbortController') || content.includes('signal');
+
+    // Detect if this is a React component file (useEffect handles cleanup via return)
+    const isReactFile = /\buseEffect\b/.test(content) || /\bcomponentWillUnmount\b/.test(content);
+
+    // Track which event-listener lines are inside a useEffect (React cleanup pattern)
+    const useEffectRanges: Array<{ start: number; end: number }> = [];
+    if (isReactFile) {
+      const effectPattern = /useEffect\s*\(/g;
+      let m;
+      while ((m = effectPattern.exec(content)) !== null) {
+        const startLine = content.substring(0, m.index).split('\n').length;
+        // Find the matching closing of the useEffect call (rough heuristic)
+        let depth = 0;
+        let inEffect = false;
+        let endLine = startLine;
+        for (let k = m.index; k < content.length; k++) {
+          if (content[k] === '(') { depth++; inEffect = true; }
+          if (content[k] === ')') { depth--; }
+          if (inEffect && depth === 0) {
+            endLine = content.substring(0, k).split('\n').length;
+            break;
+          }
+        }
+        useEffectRanges.push({ start: startLine, end: endLine });
+      }
+    }
+
+    const reportedEventListenerOnce = new Set<string>();
+
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      const lineNum = i + 1;
 
       // Check for event listeners without cleanup
       if (/addEventListener\s*\(|\.on\s*\(/.test(line)) {
-        // Look for corresponding removeEventListener in the file
-        if (!content.includes('removeEventListener') && !content.includes('.off(')) {
-          violations.push(this.createViolation(
-            filePath,
-            'Event listener without apparent cleanup',
-            i + 1,
-            'Ensure event listeners are removed in cleanup/unmount'
-          ));
-        }
+        // Skip if file already has matching cleanup
+        if (hasRemoveEventListener || hasAbortController) continue;
+
+        // Skip if inside React useEffect (cleanup handled by return function)
+        const insideEffect = useEffectRanges.some(r => lineNum >= r.start && lineNum <= r.end);
+        if (insideEffect) continue;
+
+        // Avoid duplicate warnings for same event type in same file
+        const eventMatch = line.match(/(?:addEventListener|\.on)\s*\(\s*['"`](\w+)['"`]/);
+        const eventKey = eventMatch ? eventMatch[1] : `line-${lineNum}`;
+        if (reportedEventListenerOnce.has(eventKey)) continue;
+        reportedEventListenerOnce.add(eventKey);
+
+        violations.push(this.createViolation(
+          filePath,
+          'Event listener without apparent cleanup',
+          lineNum,
+          'Ensure event listeners are removed in cleanup/unmount, or use AbortController signal'
+        ));
       }
 
       // Check for setInterval without clearInterval
@@ -156,23 +199,33 @@ export class PerformanceAntipatternsRule implements IRule {
           violations.push(this.createViolation(
             filePath,
             'setInterval without clearInterval',
-            i + 1,
+            lineNum,
             'Store interval ID and clear it during cleanup'
           ));
         }
       }
 
-      // Check for large array accumulation in loops
-      if (/\.push\s*\(/.test(line) && /while|for/.test(content.substring(Math.max(0, content.indexOf(line) - 200), content.indexOf(line)))) {
-        // Check if there's no size limit
-        if (!/\.length\s*[<>]|\.slice\(|\.splice\(/.test(content)) {
-          violations.push(this.createViolation(
-            filePath,
-            'Array accumulation in loop without apparent size limit',
-            i + 1,
-            'Consider adding size limits or using streaming'
-          ));
-          break;
+      // Check for large array accumulation in loops — only flag when there's
+      // strong evidence of unbounded growth (push inside while/for with no guard)
+      if (/\.push\s*\(/.test(line)) {
+        // Look at the 15 surrounding lines for a loop construct
+        const contextStart = Math.max(0, i - 15);
+        const contextEnd = Math.min(lines.length, i + 5);
+        const localContext = lines.slice(contextStart, contextEnd).join('\n');
+
+        const inLoop = /\b(while|for)\s*\(/.test(localContext);
+        if (inLoop) {
+          // Only flag if there's NO size guard in the surrounding context
+          const hasSizeGuard = /\.length\s*[<>]|\.slice\(|\.splice\(|\.shift\(|\.pop\(|break\b|return\b/.test(localContext);
+          if (!hasSizeGuard) {
+            violations.push(this.createViolation(
+              filePath,
+              'Array accumulation in loop without apparent size limit',
+              lineNum,
+              'Consider adding size limits, pagination, or using streaming'
+            ));
+            break; // Only report once per file
+          }
         }
       }
     }

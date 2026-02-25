@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "camouf": {
+      "command": "npx",
+      "args": ["camouf@latest", "mcp"],
+      "env": {}
+    }
+  }
+}

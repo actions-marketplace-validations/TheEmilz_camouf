@@ -1,0 +1,33 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "camouf-marketplace",
+  "version": "0.9.0",
+  "description": "Architecture guardrails for AI-generated code",
+  "metadata": {
+    "description": "Camouf plugin marketplace — catches function name drift, phantom imports, field mismatches, and contract violations in AI-generated code."
+  },
+  "owner": {
+    "name": "TheEmilz"
+  },
+  "plugins": [
+    {
+      "name": "camouf",
+      "source": "./plugins/camouf",
+      "description": "Catches function name drift, phantom imports, field mismatches, and contract violations in AI-generated code.",
+      "version": "0.9.0",
+      "author": {
+        "name": "TheEmilz"
+      },
+      "homepage": "https://github.com/TheEmilz/camouf",
+      "repository": "https://github.com/TheEmilz/camouf-claude-plugin",
+      "license": "Apache-2.0",
+      "keywords": [
+        "architecture",
+        "static-analysis",
+        "ai-generated-code",
+        "mismatch-detection"
+      ],
+      "category": "code-quality"
+    }
+  ]
+}

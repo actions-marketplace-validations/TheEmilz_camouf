@@ -1,0 +1,24 @@
+{
+  "name": "camouf",
+  "description": "Architecture guardrails for AI-generated code. Catches function name drift, phantom imports, field mismatches, and contract violations that compile but fail at runtime.",
+  "version": "0.9.0",
+  "author": {
+    "name": "TheEmilz",
+    "url": "https://github.com/TheEmilz"
+  },
+  "homepage": "https://github.com/TheEmilz/camouf",
+  "repository": "https://github.com/TheEmilz/camouf",
+  "license": "Apache-2.0",
+  "keywords": [
+    "architecture",
+    "static-analysis",
+    "ai-generated-code",
+    "mismatch-detection",
+    "contract-validation",
+    "cross-file-analysis",
+    "typescript",
+    "javascript",
+    "python",
+    "multi-language"
+  ]
+}

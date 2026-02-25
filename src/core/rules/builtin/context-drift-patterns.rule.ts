@@ -357,7 +357,38 @@ export class ContextDriftPatternsRule implements IRule {
     const n1 = this.normalizeName(name1);
     const n2 = this.normalizeName(name2);
     
-    // Check for concept pattern match
+    // Exact match after normalization
+    if (n1 === n2) return 1.0;
+
+    // ── Token-based analysis ──
+    // Split into meaningful tokens (e.g., "buildSignedPayload" → ["build","signed","payload"])
+    const tokens1 = n1.split(/\s+/).filter(Boolean);
+    const tokens2 = n2.split(/\s+/).filter(Boolean);
+    
+    // If one name is a strict superset of the other's tokens,
+    // it's likely an intentionally distinct variant (e.g., "build signed payload" vs "build id signed payload").
+    // The extra token(s) represent a real semantic distinction, NOT drift.
+    if (tokens1.length !== tokens2.length) {
+      const shorter = tokens1.length < tokens2.length ? tokens1 : tokens2;
+      const longer  = tokens1.length < tokens2.length ? tokens2 : tokens1;
+      
+      // Check if all tokens of the shorter name appear in the longer name in order
+      let j = 0;
+      for (let i = 0; i < longer.length && j < shorter.length; i++) {
+        if (longer[i] === shorter[j]) j++;
+      }
+      const isSubsequence = j === shorter.length;
+      
+      if (isSubsequence) {
+        const extraTokens = longer.length - shorter.length;
+        // 1 or more genuine distinguishing tokens → likely intentional, suppress
+        if (extraTokens >= 1) {
+          return 0.5; // Below the default 0.75 threshold → will NOT be flagged
+        }
+      }
+    }
+    
+    // Check for concept pattern match (user/customer, get/fetch, etc.)
     for (const pattern of this.conceptPatterns) {
       const matches1 = n1.includes(pattern.base) || pattern.variants.some(v => n1.includes(v));
       const matches2 = n2.includes(pattern.base) || pattern.variants.some(v => n2.includes(v));
@@ -368,7 +399,14 @@ export class ContextDriftPatternsRule implements IRule {
         const used2 = [pattern.base, ...pattern.variants].find(v => n2.includes(v));
         
         if (used1 && used2 && used1 !== used2) {
-          return 0.85; // High similarity due to concept match
+          // But only flag if the surrounding context (the non-variant tokens) is the same
+          const context1 = n1.replace(used1, '').trim();
+          const context2 = n2.replace(used2, '').trim();
+          if (context1 === context2 || this.levenshteinSimilarity(context1, context2) > 0.8) {
+            return 0.85; // High similarity due to concept match with same context
+          }
+          // Different surrounding context → probably intentionally different concepts
+          return 0.4;
         }
       }
     }

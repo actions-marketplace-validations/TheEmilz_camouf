@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## camouf [0.11.0] - 2026-02-25
+
+### Fixed
+- **`ai-hallucinated-imports` — NodeNext/Node16 false positives eliminated (~30 FPs)** — The rule now reads `moduleResolution` and `module` from `tsconfig.json` and tries `.js→.ts`, `.jsx→.tsx`, `.mjs→.mts`, `.cjs→.cts` extension substitution when checking relative imports. Projects using `moduleResolution: NodeNext` (where `.js` imports resolve to `.ts` at compile-time) will no longer see spurious "hallucinated import" errors
+- **`phantom-type-references` — Built-in type allowlist expanded from ~50 to ~200+ entries (~40 FPs)** — Added typed arrays (`Uint8Array`, `Int32Array`, `Float64Array`, etc.), `ArrayBuffer`, `DataView`, iterators/generators, `WeakRef`/`FinalizationRegistry`, error subclasses, Web APIs (`URL`, `URLSearchParams`, `AbortController`, `AbortSignal`, `TextEncoder`, `TextDecoder`, `ReadableStream`, `WritableStream`, `Blob`, `FormData`, `Crypto`, `Headers`, `Request`, `Response`, `WebSocket`, `Worker`, etc.), DOM observers, React utility types, and timer types. `isBuiltinType()` now also recognizes single-letter generics, `TKey`/`TValue`/`TResult` conventions, and namespace-qualified builtins like `NodeJS.Timeout`
+- **`context-drift-patterns` — Token-based analysis reduces false positives on intentional naming (~15 FPs)** — Names like `buildSignedPayload` vs `buildIDSignedPayload` are now tokenized and compared structurally. When one name is a strict subsequence of the other with ≥1 distinguishing token, similarity is suppressed below the threshold. Concept-pattern matching (get/fetch, user/customer) also now compares surrounding context — different surrounding tokens indicate intentionally distinct functions
+
+### Improved
+- **`performance-antipatterns` — Smarter memory leak detection** — Event listener warnings now skip React `useEffect` scopes (cleanup handled by return function), recognize `AbortController`/`signal` as valid cleanup, and deduplicate warnings for the same event type. Array-in-loop detection uses a 15-line local window and recognizes `shift()`, `pop()`, `break`, `return` as valid size guards
+
+### Changed
+- CLI banner version updated to v0.11.0
+
+---
+
 ## camouf [0.10.0] - 2026-02-20
 
 ### Added
@@ -411,7 +426,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/TheEmilz/camouf/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/TheEmilz/camouf/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/TheEmilz/camouf/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/TheEmilz/camouf/compare/v0.9.0...v0.10.0
 [0.2.0]: https://github.com/TheEmilz/camouf/compare/v0.1.4...v0.2.0
 [0.1.4]: https://github.com/TheEmilz/camouf/compare/v0.1.3...v0.1.4

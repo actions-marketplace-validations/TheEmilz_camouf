@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "camouf": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "c:\\Users\\ASUS\\Desktop\\camouf\\dist\\cli\\index.js",
+        "mcp"
+      ],
+      "env": {}
+    }
+  }
+}
