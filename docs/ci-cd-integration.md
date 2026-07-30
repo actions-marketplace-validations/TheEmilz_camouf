@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TheEmilz/camouf@v0.10.0
+      - uses: TheEmilz/camouf@v0.11.0
 ```
 
 That is all that is needed. Camouf will auto-detect your `camouf.config.json`, run all enabled rules, generate a report artifact, and annotate changed files directly in the pull request diff.
@@ -32,7 +32,7 @@ That is all that is needed. Camouf will auto-detect your `camouf.config.json`, r
 To run only specific rules (for example, during gradual adoption or to focus on async safety):
 
 ```yaml
-- uses: TheEmilz/camouf@v0.10.0
+- uses: TheEmilz/camouf@v0.11.0
   with:
     rules: 'async-discrepancies,contract-mismatch,function-signature-matching'
     fail-on: 'error'
@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: TheEmilz/camouf@v0.10.0
+      - uses: TheEmilz/camouf@v0.11.0
         with:
           rules: 'async-discrepancies'
           fail-on: 'warn'
@@ -83,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: TheEmilz/camouf@v0.10.0
+      - uses: TheEmilz/camouf@v0.11.0
         id: camouf
         with:
           fail-on: 'error'

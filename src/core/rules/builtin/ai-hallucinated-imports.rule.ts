@@ -27,6 +27,8 @@ interface HallucinatedImportsConfig extends RuleConfig {
   ignorePatterns?: string[];
   /** Path aliases mapping (e.g., { "@/": "./src/" }) */
   pathAliases?: Record<string, string>;
+  /** Detected moduleResolution from tsconfig (auto-loaded) */
+  moduleResolution?: string;
 }
 
 // Common import patterns across languages
@@ -168,8 +170,17 @@ export class AiHallucinatedImportsRule implements IRule {
     return { violations };
   }
 
+  // Extension substitution map for moduleResolution: NodeNext/Node16
+  // In these modes, .js imports resolve to .ts files at compile-time
+  private readonly extensionSubstitutions: Record<string, string[]> = {
+    '.js': ['.ts', '.tsx'],
+    '.jsx': ['.tsx', '.ts'],
+    '.mjs': ['.mts'],
+    '.cjs': ['.cts'],
+  };
+
   private async loadPathAliasesFromConfig(rootDir: string): Promise<void> {
-    // Try to read tsconfig.json for path aliases
+    // Try to read tsconfig.json for path aliases and moduleResolution
     const tsconfigPath = path.join(rootDir, 'tsconfig.json');
     
     try {
@@ -177,6 +188,18 @@ export class AiHallucinatedImportsRule implements IRule {
         const tsconfigContent = fs.readFileSync(tsconfigPath, 'utf-8');
         const tsconfig = JSON.parse(tsconfigContent);
         
+        // Detect moduleResolution setting
+        if (tsconfig.compilerOptions?.moduleResolution) {
+          this.config.moduleResolution = tsconfig.compilerOptions.moduleResolution.toLowerCase();
+        }
+        // Also detect module field which implies resolution strategy
+        if (!this.config.moduleResolution && tsconfig.compilerOptions?.module) {
+          const mod = tsconfig.compilerOptions.module.toLowerCase();
+          if (['nodenext', 'node16'].includes(mod)) {
+            this.config.moduleResolution = mod;
+          }
+        }
+
         if (tsconfig.compilerOptions?.paths) {
           const baseUrl = tsconfig.compilerOptions.baseUrl || '.';
           
@@ -193,6 +216,40 @@ export class AiHallucinatedImportsRule implements IRule {
     } catch {
       // Ignore tsconfig parsing errors
     }
+  }
+
+  /**
+   * Check if a .js/.jsx/.mjs/.cjs extension import resolves to a .ts/.tsx/.mts/.cts
+   * file on disk. This is the standard behavior with moduleResolution: NodeNext/Node16.
+   */
+  private checkExtensionSubstitution(resolvedPath: string): boolean {
+    const ext = path.extname(resolvedPath);
+    const substitutions = this.extensionSubstitutions[ext];
+    if (!substitutions) return false;
+
+    const basePath = resolvedPath.slice(0, -ext.length);
+    for (const sub of substitutions) {
+      if (fs.existsSync(basePath + sub)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Determines if we should try .js → .ts extension substitution.
+   * Always enabled when moduleResolution is nodenext/node16,
+   * but also applied as a fallback for any TS project to reduce false positives.
+   */
+  private shouldTryExtensionSubstitution(): boolean {
+    const mr = this.config.moduleResolution;
+    if (mr && ['nodenext', 'node16', 'bundler'].includes(mr)) {
+      return true;
+    }
+    // Fallback: always try substitution since it's a very common pattern
+    // and never produces false negatives (a real .js file would have been
+    // found already by the exact-match check)
+    return true;
   }
 
   private async checkFileImports(
@@ -367,6 +424,27 @@ export class AiHallucinatedImportsRule implements IRule {
       for (const indexExt of ['/index.ts', '/index.tsx', '/index.js', '/index.jsx']) {
         if (fs.existsSync(resolvedPath + indexExt)) {
           return true;
+        }
+      }
+    }
+
+    // NodeNext/Node16 extension substitution: .js imports resolve to .ts at compile-time
+    // e.g., import { foo } from './bar.js' resolves to ./bar.ts
+    if (this.shouldTryExtensionSubstitution()) {
+      if (this.checkExtensionSubstitution(resolvedPath)) {
+        return true;
+      }
+      // Also try index files with substitution: ./dir/index.js → ./dir/index.ts
+      const importExt = path.extname(importPath);
+      if (!importExt) {
+        // No extension — already handled above. But if an explicit .js extension
+        // points to a directory, try index substitution
+        for (const [jsExt, tsExts] of Object.entries(this.extensionSubstitutions)) {
+          for (const tsExt of tsExts) {
+            if (fs.existsSync(path.join(resolvedPath, `index${tsExt}`))) {
+              return true;
+            }
+          }
         }
       }
     }

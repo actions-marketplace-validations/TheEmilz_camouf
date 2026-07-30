@@ -158,7 +158,7 @@ Running `npx camouf` or `npx camouf help` displays the full interactive help:
  ██║     ███████║██╔████╔██║██║   ██║██║   ██║█████╗
  ██║     ██╔══██║██║╚██╔╝██║██║   ██║██║   ██║██╔══╝
  ╚██████╗██║  ██║██║ ╚═╝ ██║╚██████╔╝╚██████╔╝██║
-  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝    v0.10.0
+  ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝  ╚═════╝ ╚═╝    v0.11.0
 
   Architecture guardrails for AI-generated code
 
@@ -730,7 +730,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TheEmilz/camouf@v0.10.0
+      - uses: TheEmilz/camouf@v0.11.0
 ```
 
 Camouf auto-detects your config, runs all enabled rules, annotates changed files in PR diffs, and uploads a report artifact.
@@ -738,7 +738,7 @@ Camouf auto-detects your config, runs all enabled rules, annotates changed files
 #### Target Specific Rules
 
 ```yaml
-- uses: TheEmilz/camouf@v0.10.0
+- uses: TheEmilz/camouf@v0.11.0
   with:
     rules: 'async-discrepancies,contract-mismatch'
     fail-on: 'warn'
@@ -757,7 +757,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: TheEmilz/camouf@v0.10.0
+      - uses: TheEmilz/camouf@v0.11.0
         with:
           rules: 'async-discrepancies'
           fail-on: 'warn'

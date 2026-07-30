@@ -79,11 +79,77 @@ export class PhantomTypeReferencesRule implements IRule {
     'Record', 'Partial', 'Required', 'Readonly', 'Pick', 'Omit', 'Exclude', 'Extract',
     'NonNullable', 'Parameters', 'ReturnType', 'InstanceType', 'ThisType',
     'Awaited', 'ConstructorParameters', 'Uppercase', 'Lowercase', 'Capitalize', 'Uncapitalize',
-    // DOM types (common in frontend)
+    'NoInfer', 'OmitThisParameter', 'ThisParameterType',
+    // Typed Arrays & Buffers (TC39 / ES globals)
+    'ArrayBuffer', 'SharedArrayBuffer', 'DataView',
+    'Int8Array', 'Uint8Array', 'Uint8ClampedArray',
+    'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array',
+    'Float32Array', 'Float64Array', 'BigInt64Array', 'BigUint64Array',
+    'ArrayLike', 'ArrayBufferLike', 'ArrayBufferView',
+    // Iterators & Generators
+    'Iterator', 'AsyncIterator', 'Generator', 'AsyncGenerator',
+    'IterableIterator', 'AsyncIterableIterator',
+    'Iterable', 'AsyncIterable', 'IteratorResult',
+    'GeneratorFunction', 'AsyncGeneratorFunction',
+    // Promise-related
+    'PromiseLike', 'PromiseConstructorLike',
+    // PropertyKey & descriptors
+    'PropertyKey', 'PropertyDescriptor', 'PropertyDescriptorMap', 'TypedPropertyDescriptor',
+    // Proxy & Reflect
+    'Proxy', 'ProxyHandler', 'Reflect',
+    // WeakRef & FinalizationRegistry (ES2021)
+    'WeakRef', 'FinalizationRegistry',
+    // Error subclasses
+    'TypeError', 'RangeError', 'SyntaxError', 'ReferenceError', 'EvalError', 'URIError', 'AggregateError',
+    // JSON, Math, console
+    'JSON', 'Math',
+    // Intl
+    'Intl',
+    // Web/DOM types (common in frontend and Node 18+)
     'HTMLElement', 'HTMLDivElement', 'HTMLInputElement', 'HTMLButtonElement', 'HTMLFormElement',
     'HTMLAnchorElement', 'HTMLImageElement', 'HTMLSpanElement', 'HTMLTableElement',
+    'HTMLTextAreaElement', 'HTMLSelectElement', 'HTMLCanvasElement', 'HTMLVideoElement',
+    'HTMLAudioElement', 'HTMLLabelElement', 'HTMLLIElement', 'HTMLUListElement',
+    'HTMLOListElement', 'HTMLParagraphElement', 'HTMLHeadingElement', 'HTMLPreElement',
     'Element', 'Node', 'Document', 'Window', 'Event', 'MouseEvent', 'KeyboardEvent',
+    'FocusEvent', 'InputEvent', 'PointerEvent', 'TouchEvent', 'WheelEvent',
+    'DragEvent', 'ClipboardEvent', 'AnimationEvent', 'TransitionEvent',
+    'CustomEvent', 'EventTarget', 'EventListener',
+    'MutationObserver', 'IntersectionObserver', 'ResizeObserver', 'PerformanceObserver',
+    'NodeList', 'HTMLCollection', 'DOMTokenList', 'CSSStyleDeclaration',
+    'DocumentFragment', 'ShadowRoot', 'SVGElement',
+    // Web APIs (also available in Node 18+)
+    'URL', 'URLSearchParams', 'Headers', 'Request', 'Response',
+    'ReadableStream', 'WritableStream', 'TransformStream',
+    'ReadableStreamDefaultReader', 'WritableStreamDefaultWriter',
+    'AbortController', 'AbortSignal',
+    'Blob', 'File', 'FileReader', 'FileList',
+    'FormData',
+    'TextEncoder', 'TextDecoder',
+    'TextEncoderStream', 'TextDecoderStream',
+    'Crypto', 'SubtleCrypto', 'CryptoKey',
+    'MessageChannel', 'MessagePort', 'BroadcastChannel',
+    'WebSocket', 'CloseEvent', 'MessageEvent',
+    'Worker', 'SharedWorker', 'ServiceWorker',
+    'Performance', 'PerformanceEntry', 'PerformanceMark', 'PerformanceMeasure',
+    'Cache', 'CacheStorage',
+    'Storage', 'StorageEvent',
+    'Navigator', 'Location', 'History',
+    'MediaStream', 'MediaRecorder',
+    'ImageData', 'ImageBitmap', 'CanvasRenderingContext2D', 'WebGLRenderingContext',
+    'OffscreenCanvas',
+    // Streams & structured clone
+    'StructuredSerializeOptions', 'Transferable',
+    // Timer types
+    'Timer', 'Timeout', 'Interval',
+    // React types
     'React', 'ReactNode', 'ReactElement', 'FC', 'Component', 'JSX',
+    'ReactFragment', 'ReactPortal', 'ReactChild', 'ReactText',
+    'ChangeEvent', 'FormEvent', 'SyntheticEvent',
+    'Dispatch', 'SetStateAction', 'Reducer', 'MutableRefObject', 'RefObject',
+    'PropsWithChildren', 'PropsWithRef', 'ForwardedRef',
+    'CSSProperties', 'ComponentProps', 'ComponentPropsWithRef', 'ComponentPropsWithoutRef',
+    'ElementRef', 'ComponentType', 'ElementType',
     // Node.js types
     'Buffer', 'NodeJS', 'Process',
     // Common patterns
@@ -286,7 +352,20 @@ export class PhantomTypeReferencesRule implements IRule {
   }
 
   private isBuiltinType(typeName: string): boolean {
-    return this.builtinTypes.has(typeName);
+    // Direct match against known builtins
+    if (this.builtinTypes.has(typeName)) return true;
+
+    // Single uppercase letter = generic type parameter (T, K, V, etc.)
+    if (/^[A-Z]$/.test(typeName)) return true;
+
+    // Common generic parameter naming conventions (T1, T2, TKey, TValue, TResult, etc.)
+    if (/^T[A-Z0-9]/.test(typeName) && typeName.length <= 12) return true;
+
+    // Namespace-qualified builtins (e.g., NodeJS.Timeout, Intl.DateTimeFormat)
+    const root = typeName.split('.')[0];
+    if (this.builtinTypes.has(root)) return true;
+
+    return false;
   }
 
   private matchesIgnorePattern(typeName: string): boolean {

@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A file was just modified. If this was a code file (.ts, .js, .tsx, .jsx, .py, .java, .go, .rs), consider whether the change might have introduced a cross-file mismatch. If you suspect a mismatch (e.g., you renamed a function, changed a type field, or modified an API contract), use camouf_validate to check. Only validate when the edit involves function signatures, type definitions, imports, or API contracts — not for formatting or comment changes."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before finishing, if you made changes to multiple files during this session, consider running a final camouf_validate to ensure no cross-file mismatches were introduced. This is especially important if you modified shared types, API contracts, or function signatures."
+          }
+        ]
+      }
+    ]
+  }
+}
